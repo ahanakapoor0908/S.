@@ -13,7 +13,15 @@ body{
   font-size:16px;
   overflow:hidden; /* body won't scroll; main will */
 }
-
+<style>
+/* ====== ARROWS ====== */
+.mm-arrow {
+  position: absolute;
+  stroke: #1346b5;
+  stroke-width: 2;
+  marker-end: url(#arrowhead);
+}
+</style>
 /* ====== LOGIN PAGE ====== */
 #loginPage{width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;padding:30px;}
 .login-container{width:80%;height:80%;background:rgba(255,255,255,0.4);backdrop-filter:blur(15px);border-radius:25px;display:flex;box-shadow:0 8px 20px rgba(0,0,0,0.15);}
@@ -184,6 +192,7 @@ body{
       <input type="text" id="chatInput" placeholder="Ask me anything...">
       <button id="chatBtn" onclick="sendMessage()">Send</button>
     </div>
+    
 
   </div>
 </div>
@@ -282,13 +291,49 @@ function setTopic(tp){
   setTimeout(()=>{ if(t) t.remove(); }, 1500);
 }
 
-/* ===== MINDMAP ===== */
+/* ====== MINDMAP WITH ARROWS ====== */
 function loadMindmap(){
   const out=document.getElementById("mmOutput");
-  if(!chosenTopic){ out.innerHTML="Select a topic first!"; return; }
-  const mmData=mmBank[chosenTopic];
-  if(!mmData){ out.innerHTML="Mindmap not available."; return; }
   out.innerHTML="";
+  out.style.position="relative";
+
+  if(!chosenTopic){ 
+    out.innerHTML="Select a topic first!"; 
+    return; 
+  }
+  const mmData=mmBank[chosenTopic];
+  if(!mmData){ 
+    out.innerHTML="Mindmap not available."; 
+    return; 
+  }
+
+  // create SVG for arrows
+  const svgNS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(svgNS, "svg");
+  svg.style.position = "absolute";
+  svg.style.top = "0";
+  svg.style.left = "0";
+  svg.style.width = "100%";
+  svg.style.height = "100%";
+  svg.style.pointerEvents = "none";
+  
+  // define arrowhead
+  const defs = document.createElementNS(svgNS,"defs");
+  const marker = document.createElementNS(svgNS,"marker");
+  marker.setAttribute("id","arrowhead");
+  marker.setAttribute("markerWidth","10");
+  marker.setAttribute("markerHeight","7");
+  marker.setAttribute("refX","0");
+  marker.setAttribute("refY","3.5");
+  marker.setAttribute("orient","auto");
+  const polygon = document.createElementNS(svgNS,"polygon");
+  polygon.setAttribute("points","0 0, 10 3.5, 0 7");
+  polygon.setAttribute("fill","#1346b5");
+  marker.appendChild(polygon);
+  defs.appendChild(marker);
+  svg.appendChild(defs);
+  out.appendChild(svg);
+
   // central bubble
   const center = document.createElement("div");
   center.className="mm-bubble";
@@ -298,12 +343,41 @@ function loadMindmap(){
   center.innerText=chosenTopic;
   out.appendChild(center);
 
-  mmData.forEach(sub=>{
-    const bubble=document.createElement("div");
+  // place sub-bubbles around center
+  const radius = 180; // distance from center
+  const angleStep = 360 / mmData.length;
+
+  mmData.forEach((sub, idx)=>{
+    const bubble = document.createElement("div");
     bubble.className="mm-bubble";
-    bubble.innerText=sub;
+    bubble.innerText = sub;
     out.appendChild(bubble);
+
+    // position bubble
+    bubble.style.position="absolute";
+    const angle = angleStep * idx * (Math.PI/180);
+    const cx = out.clientWidth/2 - 80; // center x adjustment
+    const cy = 150; // top offset for center bubble
+    const bx = cx + radius * Math.cos(angle);
+    const by = cy + radius * Math.sin(angle);
+    bubble.style.left = bx + "px";
+    bubble.style.top = by + "px";
+
+    // draw arrow
+    const line = document.createElementNS(svgNS,"line");
+    line.setAttribute("x1", cx + 80); // center bubble center x
+    line.setAttribute("y1", cy + 80); // center bubble center y
+    line.setAttribute("x2", bx + 60); // sub-bubble approx center x
+    line.setAttribute("y2", by + 60); // sub-bubble approx center y
+    line.setAttribute("class","mm-arrow");
+    line.setAttribute("marker-end","url(#arrowhead)");
+    svg.appendChild(line);
   });
+
+  // position central bubble
+  center.style.position="absolute";
+  center.style.left = out.clientWidth/2 - 80 + "px";
+  center.style.top = "150px";
 }
 
 /* ===== QUIZ BANK (Multiple Choice) ===== */
